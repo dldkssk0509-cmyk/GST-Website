@@ -1,6 +1,6 @@
 import type React from "react";
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useRef, useState } from "react";
+import { motion, useScroll, useSpring, useTransform, type MotionValue } from "framer-motion";
 import { ArrowRight, Menu } from "lucide-react";
 import { esgItems, irItems, merits, navItems, newsItems, products } from "./data";
 import heroVideoSrc from "./assets/hero.mp4";
@@ -14,30 +14,61 @@ const fadeUp = {
 function Reveal({
   children,
   className = "",
-  delay = 0,
   id,
 }: {
   children: React.ReactNode;
   className?: string;
-  delay?: number;
   id?: string;
 }) {
+  const ref = useRef<HTMLElement | null>(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start 86%", "end 18%"],
+  });
+  const smoothProgress = useSpring(scrollYProgress, { stiffness: 90, damping: 24, mass: 0.35 });
+  const opacity = useTransform(smoothProgress, [0, 0.18, 0.88, 1], [0, 1, 1, 0.96]);
+  const y = useTransform(smoothProgress, [0, 0.22, 1], [42, 0, -8]);
+
   return (
     <section
+      ref={ref}
       id={id}
       className={className}
     >
       <motion.div
         className="h-full"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.22 }}
-        variants={fadeUp}
-        transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1], delay }}
+        style={{ opacity, y }}
       >
         {children}
       </motion.div>
     </section>
+  );
+}
+
+function SequenceItem({
+  children,
+  className = "",
+  index,
+  progress,
+  step = 0.14,
+  start = 0.08,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  index: number;
+  progress: MotionValue<number>;
+  step?: number;
+  start?: number;
+}) {
+  const itemStart = start + index * step;
+  const itemEnd = Math.min(itemStart + 0.24, 0.98);
+  const opacity = useTransform(progress, [itemStart, itemEnd], [0, 1]);
+  const y = useTransform(progress, [itemStart, itemEnd], [34, 0]);
+
+  return (
+    <motion.div className={className} style={{ opacity, y }}>
+      {children}
+    </motion.div>
   );
 }
 
@@ -65,7 +96,7 @@ function Hero() {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
 
   return (
-    <Reveal className="relative h-[min(716px,82vh)] min-h-[560px] overflow-hidden bg-[#09171f]" delay={0.05}>
+    <Reveal className="relative h-[min(716px,82vh)] min-h-[560px] overflow-hidden bg-[#09171f]">
       <Header />
       {!isVideoLoaded && (
         <img
@@ -112,9 +143,13 @@ function Hero() {
 }
 
 function MeritSection() {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 78%", "end 32%"] });
+  const progress = useSpring(scrollYProgress, { stiffness: 95, damping: 25, mass: 0.35 });
+
   return (
     <Reveal id="about" className="bg-[#09171f] px-6 pb-[116px] pt-[129px] text-white md:pb-[117px] md:pt-[135px]">
-      <div className="section-wrap">
+      <div ref={ref} className="section-wrap">
         <motion.h2
           className="text-center text-[clamp(34px,3.35vw,48px)] font-bold uppercase leading-tight"
           variants={fadeUp}
@@ -126,19 +161,19 @@ function MeritSection() {
         </motion.h2>
         <div className="mx-auto mt-[116px] grid max-w-[1168px] grid-cols-1 gap-12 md:grid-cols-3 md:gap-0">
           {merits.map((item, index) => (
-            <motion.div
+            <SequenceItem
               key={item.index}
               className="diamond-card group relative flex h-[280px] flex-col items-center justify-center gap-6 text-center transition-transform duration-300 hover:-translate-y-2 md:h-[337px]"
-              initial={{ opacity: 0, y: 34 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.45 }}
-              transition={{ duration: 0.62, delay: index * 0.11, ease: [0.22, 1, 0.36, 1] }}
+              index={index}
+              progress={progress}
+              start={0.08}
+              step={0.2}
             >
               <h3 className="relative z-10 text-[clamp(20px,1.7vw,24px)] font-medium uppercase transition-colors duration-300 group-hover:text-white">
                 {item.title}
               </h3>
               <p className="relative z-10 text-[20px] font-medium uppercase text-white/90 transition-colors duration-300">{item.index}</p>
-            </motion.div>
+            </SequenceItem>
           ))}
         </div>
       </div>
@@ -147,34 +182,34 @@ function MeritSection() {
 }
 
 function ProductSection() {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 74%", "end 28%"] });
+  const progress = useSpring(scrollYProgress, { stiffness: 80, damping: 24, mass: 0.4 });
+
   return (
     <Reveal id="products" className="bg-[#09171f] px-6 pb-0 pt-[1px] text-white">
-      <div className="section-wrap">
+      <div ref={ref} className="section-wrap">
         <div className="space-y-0">
           {products.map((product, index) => (
-            <motion.article
+            <SequenceItem
               key={product.title}
-              className="grid min-h-[581px] items-center gap-[50px] py-12 lg:grid-cols-[minmax(420px,602px)_minmax(460px,666px)] lg:py-0"
-              initial={{ opacity: 0, y: 76 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.38 }}
-              transition={{ duration: 0.82, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
+              className="py-12 lg:py-0"
+              index={index}
+              progress={progress}
+              start={0.05}
+              step={0.26}
             >
-              <div className="order-2 lg:order-1">
-                <p className="mb-[14px] text-[20px] font-bold uppercase">{product.eyebrow}</p>
-                <h2 className="text-[48px] font-bold leading-tight">{product.title}</h2>
-                <p className="mt-[21px] max-w-[602px] text-[clamp(19px,1.7vw,24px)] font-medium leading-normal">{product.description}</p>
-              </div>
-              <motion.div
-                className="order-1 overflow-hidden lg:order-2"
-                initial={{ opacity: 0, y: 76 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.38 }}
-                transition={{ duration: 0.82, delay: index * 0.1 + 0.06, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <img src={product.image} alt={product.title} className="aspect-[666/581] w-full object-cover" />
-              </motion.div>
-            </motion.article>
+              <article className="grid min-h-[581px] items-center gap-[50px] lg:grid-cols-[minmax(420px,602px)_minmax(460px,666px)]">
+                <div>
+                  <p className="mb-[14px] text-[20px] font-bold uppercase">{product.eyebrow}</p>
+                  <h2 className="text-[48px] font-bold leading-tight">{product.title}</h2>
+                  <p className="mt-[21px] max-w-[602px] text-[clamp(19px,1.7vw,24px)] font-medium leading-normal">{product.description}</p>
+                </div>
+                <div className="overflow-hidden">
+                  <img src={product.image} alt={product.title} className="aspect-[666/581] w-full object-cover" />
+                </div>
+              </article>
+            </SequenceItem>
           ))}
         </div>
       </div>
@@ -185,10 +220,8 @@ function ProductSection() {
 function RndSection() {
   return (
     <Reveal id="r&d" className="relative h-[681px] overflow-hidden text-white">
-      <img src="/assets/rnd.png" alt="" className="absolute inset-0 h-full w-full object-cover" />
+      <img src="/assets/rnd.png" alt="" className="absolute inset-0 h-full w-full object-cover object-center" />
       <div className="absolute inset-0 bg-black/10" />
-      <div className="absolute left-0 top-1/2 h-px w-full bg-white/35" />
-      <div className="absolute left-1/2 top-0 h-full w-px bg-white/35" />
       <div className="section-wrap relative h-full px-[clamp(24px,4.2vw,60px)]">
         <h2 className="absolute left-[clamp(24px,4.2vw,60px)] top-[60px] text-[48px] font-bold uppercase">R&D</h2>
         <div className="absolute left-[50%] top-[48.5%] max-w-[657px] translate-y-[28px] pr-6 max-lg:left-6 max-lg:top-[52%] max-lg:translate-y-0">
@@ -207,27 +240,33 @@ function RndSection() {
 }
 
 function EsgSection() {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 78%", "end 34%"] });
+  const progress = useSpring(scrollYProgress, { stiffness: 95, damping: 25, mass: 0.35 });
+
   return (
     <Reveal id="esg" className="bg-white px-6 py-[124px] text-black">
-      <div className="section-wrap">
+      <div ref={ref} className="section-wrap">
         <h2 className="text-[48px] font-bold uppercase">ESG</h2>
         <div className="mt-[72px] max-w-[1031px] space-y-[45px]">
           {esgItems.map((item, index) => (
-            <motion.article
+            <SequenceItem
               key={item.label}
               className="group grid cursor-default grid-cols-1 gap-4 rounded-sm px-0 py-2 transition-colors duration-300 hover:bg-[#f6f8fa] md:grid-cols-[185px_1fr] md:gap-[66px]"
-              initial={{ opacity: 0, y: 28 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.5 }}
-              transition={{ duration: 0.55, delay: index * 0.1 }}
+              index={index}
+              progress={progress}
+              start={0.1}
+              step={0.22}
             >
-              <h3 className="text-[clamp(34px,3.35vw,48px)] font-bold text-[#979797] transition-colors duration-300 group-hover:text-[#111]">
-                {item.label}
-              </h3>
-              <p className="self-center text-[clamp(22px,2.25vw,32px)] font-medium text-[#979797] transition-colors duration-300 group-hover:text-[#222]">
-                {item.text}
-              </p>
-            </motion.article>
+              <article className="contents">
+                <h3 className="text-[clamp(34px,3.35vw,48px)] font-bold text-[#979797] transition-colors duration-300 group-hover:text-[#111]">
+                  {item.label}
+                </h3>
+                <p className="self-center text-[clamp(22px,2.25vw,32px)] font-medium text-[#979797] transition-colors duration-300 group-hover:text-[#222]">
+                  {item.text}
+                </p>
+              </article>
+            </SequenceItem>
           ))}
         </div>
       </div>
@@ -236,26 +275,32 @@ function EsgSection() {
 }
 
 function NewsSection() {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 82%", "end 36%"] });
+  const progress = useSpring(scrollYProgress, { stiffness: 95, damping: 25, mass: 0.35 });
+
   return (
     <Reveal id="insights" className="bg-[#ededed] px-6 py-[30px]">
-      <div className="section-wrap">
+      <div ref={ref} className="section-wrap">
         <h2 className="text-[clamp(38px,3.35vw,48px)] font-bold capitalize">news & notices</h2>
         <div className="mt-[35px] grid bg-white px-[clamp(24px,2.85vw,41px)] py-[clamp(34px,5vw,74px)] md:grid-cols-3">
           {newsItems.map((item, index) => (
-            <motion.article
+            <SequenceItem
               key={item.title}
               className="group min-h-[139px] border-[#d9d9d9] py-2 transition-transform duration-300 hover:-translate-y-1 md:border-r md:px-9 md:first:pl-0 md:last:border-r-0 md:last:pr-0"
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.35 }}
-              transition={{ duration: 0.5, delay: index * 0.08 }}
+              index={index}
+              progress={progress}
+              start={0.12}
+              step={0.18}
             >
-              <p className="text-[14px] font-medium text-[#006fff]">{item.date}</p>
-              <h3 className="mt-[14px] min-h-[56px] text-[16px] font-medium leading-normal text-black transition-colors group-hover:text-[#006fff]">
-                {item.title}
-              </h3>
-              <p className="mt-8 text-[16px] font-medium text-[#979797] transition-colors group-hover:text-black">view +</p>
-            </motion.article>
+              <article>
+                <p className="text-[14px] font-medium text-[#006fff]">{item.date}</p>
+                <h3 className="mt-[14px] min-h-[56px] text-[16px] font-medium leading-normal text-black transition-colors group-hover:text-[#006fff]">
+                  {item.title}
+                </h3>
+                <p className="mt-8 text-[16px] font-medium text-[#979797] transition-colors group-hover:text-black">view +</p>
+              </article>
+            </SequenceItem>
           ))}
         </div>
       </div>
@@ -267,17 +312,17 @@ function IrSection() {
   return (
     <Reveal id="ir" className="bg-white px-6 py-[126px]">
       <div className="section-wrap grid gap-[80px] lg:grid-cols-[567px_528px] lg:justify-center lg:gap-[103px]">
-        <motion.article className="group" whileHover={{ y: -6 }} transition={{ duration: 0.25 }}>
+        <motion.article className="group min-w-0" whileHover={{ y: -6 }} transition={{ duration: 0.25 }}>
           <h2 className="mb-[19px] text-[20px] font-medium">주가정보</h2>
-          <div className="relative min-h-[508px] overflow-hidden text-white">
+          <div className="relative min-h-[508px] w-full overflow-hidden text-white">
             <img src="/assets/stock.png" alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]" />
             <div className="absolute inset-0 bg-black/5" />
-            <h3 className="relative px-[42px] pt-[54px] text-[32px] font-medium leading-tight">
+            <h3 className="relative px-[clamp(24px,7vw,42px)] pt-[54px] text-[32px] font-medium leading-tight">
               투자자와 함께하는
               <br />
               글로벌 성장 여정
             </h3>
-            <div className="relative mt-10 space-y-[9px] px-[42px] text-black">
+            <div className="relative mt-10 space-y-[9px] px-[clamp(24px,7vw,42px)] text-black">
               {[
                 ["전일종가", "48,500"],
                 ["전일대비", "-1,100"],
@@ -292,7 +337,7 @@ function IrSection() {
             </div>
           </div>
         </motion.article>
-        <motion.article className="group" whileHover={{ y: -4 }} transition={{ duration: 0.25 }}>
+        <motion.article className="group min-w-0" whileHover={{ y: -4 }} transition={{ duration: 0.25 }}>
           <h2 className="mb-[26px] text-[20px] font-medium">IR</h2>
           <div className="border-y border-black/30">
             {irItems.map((item) => (
